@@ -44,10 +44,13 @@ contract combine_beacon is Ownable {
 
     bool bitFlip;
 
-    event feeSet(string _exchange, string _function, uint _amount, uint256 _time, uint256 _current);
-    event discountSet(address _user, uint _discount, uint _expires);
-    event exchangeSet(string  _exchange, address _replacement_logic_contract, uint256 _start);
-    
+    event sdFeeSet(string _exchange, string _function, uint _amount, uint256 _time, uint256 _current);
+    event sdDiscountSet(address _user, uint _discount, uint _expires);
+    event sdDiscountsSet(uint _count);
+    event sdExchangeSet(string  _exchange, address _replacement_logic_contract, uint256 _start);
+    event sdEexchangeInfoSet(string _name, address _chefContract, address _routerContract, address _rewardToken, string _pendingCall,address _intermediateToken, address _baseToken, string _contractType_solo, string _contractType_pooled);
+    event sdAddressSet(string _name, address _address);
+
     ///@notice Calculate fee with discount from user
     ///@param _exchange Exchange name
     ///@param _type Type of fee
@@ -95,6 +98,7 @@ contract combine_beacon is Ownable {
         for (uint i = 0; i < _discount.length; i++) {
             setDiscount(_discount[i]._user, _discount[i]._discount, _discount[i]._expires);
         }
+        emit sdDiscountsSet(_discount.length);
     }
 
     ///@notice Accept a user and discount from the admin only
@@ -109,7 +113,7 @@ contract combine_beacon is Ownable {
         }
         mDiscounts[_user].expires = _expires;
 
-        emit discountSet(_user,_amount,_expires);
+        emit sdDiscountSet(_user,_amount,_expires);
     }
 
     ///@notice Sets a fee for an exchange and function
@@ -134,7 +138,7 @@ contract combine_beacon is Ownable {
         if (rv.current_amount == 0) {
             mFee[_exchange][_type].current_amount = _replacement_amount;
         }
-        emit feeSet(_exchange,_type,_replacement_amount,_start, block.timestamp);
+        emit sdFeeSet(_exchange,_type,_replacement_amount,_start, block.timestamp);
     }
     
     ///@notice Get logic contract for an exchange
@@ -170,7 +174,7 @@ contract combine_beacon is Ownable {
         if (mExchanges[_exchange].current_logic_contract == address(0) || _start <= block.timestamp) {
             mExchanges[_exchange].current_logic_contract = _replacement_logic_contract;
         }
-        emit exchangeSet(_exchange, _replacement_logic_contract, _start);
+        emit sdExchangeSet(_exchange, _replacement_logic_contract, _start);
     }
     
     //@notice Set information for exchange
@@ -199,6 +203,8 @@ contract combine_beacon is Ownable {
         mExchangeInfo[_name].baseToken = _baseToken;
         mExchangeInfo[_name].contractType_solo = _contractType_solo;
         mExchangeInfo[_name].contractType_pooled = _contractType_pooled;
+        event exchangeInfoSet(_name, _chefContract, _routerContract, _rewardToken, _pendingCall, _intermediateToken, _baseToken, _contractType_solo, _contractType_pooled);
+
     }
     
     ///@notice Get information for exchange
@@ -225,6 +231,7 @@ contract combine_beacon is Ownable {
         require(bytes(_key).length > 0, "Key cannot be empty");
         require(_value != address(0), "Value cannot be empty");
         mData[_key] = _value;
+        emit sdAddressSet(_key, _value);
     }
 
     ///@notice Get address of lookup key (ie. FEECOLLECTOR, ADMINUSER, etc)
