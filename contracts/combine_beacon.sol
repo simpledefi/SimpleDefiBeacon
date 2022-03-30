@@ -59,21 +59,23 @@ contract combine_beacon is Ownable {
     ///@return expires - unix timestamp when the discount expires
 
     function getFee(string memory _exchange, string memory _type, address _user) public view returns (uint,uint) {
+        uint expires;
+
         sFee memory rv = mFee[_exchange][_type];
         sDiscount memory disc = mDiscounts[_user];
         if (rv.replacement_amount == 0 && rv.current_amount == 0) {
             rv = mFee['DEFAULT'][_type];
         }
 
-        uint amount =  (rv.start != 0 && rv.start <= block.timestamp) ? rv.replacement_amount : rv.current_amount;
-        uint expires = (disc.discount_amount > 0 && (disc.expires <= block.timestamp || disc.expires == 0)) ? disc.expires : 1;
+        uint amount =  (rv.start != 0 && rv.start <= block.timestamp) ? rv.replacement_amount : rv.current_amount;   // 
+        bool expired = (disc.discount_amount > 0 && (disc.expires > block.timestamp || disc.expires == 0)) ? false : true;
 
-        if (disc.discount_amount > 0 && (disc.expires <= block.timestamp || disc.expires == 0)) {
-            
-            amount = amount - (amount *(disc.discount_amount/100) / (10**18)); 
+        if (expired) {            
+            expires = 0;
         }
         else {
-
+            amount = amount - (amount *(disc.discount_amount/100) / (10**18)); 
+            expires = disc.expires;
         }
 
         return (amount,expires);
@@ -203,8 +205,7 @@ contract combine_beacon is Ownable {
         mExchangeInfo[_name].baseToken = _baseToken;
         mExchangeInfo[_name].contractType_solo = _contractType_solo;
         mExchangeInfo[_name].contractType_pooled = _contractType_pooled;
-        event exchangeInfoSet(_name, _chefContract, _routerContract, _rewardToken, _pendingCall, _intermediateToken, _baseToken, _contractType_solo, _contractType_pooled);
-
+        emit sdEexchangeInfoSet(_name, _chefContract, _routerContract, _rewardToken, _pendingCall, _intermediateToken, _baseToken, _contractType_solo, _contractType_pooled);        
     }
     
     ///@notice Get information for exchange
