@@ -91,7 +91,7 @@ contract combine_beacon is Ownable {
 
     ///@notice Accept an array of users and discounts from teh admin only
     ///@param _discount struct array of users and discounts    
-    function setDiscount(aDiscount[] memory  _discount) public onlyOwner{ 
+    function setDiscount(aDiscount[] calldata  _discount) external onlyOwner{ 
         for (uint i = 0; i < _discount.length; i++) {
             setDiscount(_discount[i]._user, _discount[i]._discount, _discount[i]._expires);
         }
