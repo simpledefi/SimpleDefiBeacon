@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: UNLICENSED
+//SPDX-License-Identifier: MIT-open-group
 pragma solidity ^0.8.7;
 pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -34,6 +34,7 @@ contract combine_beacon is Ownable {
         string pendingCall;
         string contractType_solo;
         string contractType_pooled;
+        bool psV2;
     }
 
     mapping (string => mapping(string => sFee)) public mFee;
@@ -41,6 +42,7 @@ contract combine_beacon is Ownable {
     mapping (address => sDiscount) public mDiscounts;
     mapping (string => sExchangeInfo) public mExchangeInfo;
     mapping (string => address) public mData;
+    mapping (string => uint) public mDataUint;
 
     bool bitFlip;
 
@@ -48,8 +50,9 @@ contract combine_beacon is Ownable {
     event sdDiscountSet(address _user, uint _discount, uint _expires);
     event sdDiscountsSet(uint _count);
     event sdExchangeSet(string  _exchange, address _replacement_logic_contract, uint256 _start);
-    event sdEexchangeInfoSet(string _name, address _chefContract, address _routerContract, address _rewardToken, string _pendingCall,address _intermediateToken, address _baseToken, string _contractType_solo, string _contractType_pooled);
+    event sdEexchangeInfoSet(string _name, address _chefContract, address _routerContract, bool _psV2, address _rewardToken, string _pendingCall,address _intermediateToken, address _baseToken, string _contractType_solo, string _contractType_pooled);
     event sdAddressSet(string _name, address _address);
+    event sdDataUintSet(string _key, uint _value);
 
     ///@notice Calculate fee with discount from user
     ///@param _exchange Exchange name
@@ -58,7 +61,7 @@ contract combine_beacon is Ownable {
     ///@return amount - amount of the fee
     ///@return expires - unix timestamp when the discount expires
 
-    function getFee(string memory _exchange, string memory _type, address _user) public view returns (uint,uint) {
+    function getFee(string memory _exchange, string memory _type, address _user) external view returns (uint,uint) {
         uint expires;
 
         sFee memory rv = mFee[_exchange][_type];
@@ -80,27 +83,32 @@ contract combine_beacon is Ownable {
 
         return (amount,expires);
     }
+    ///@notice Calculate fee without discount from user
+    ///@param _exchange Exchange name
+    ///@param _type Type of fee
+    ///@return amount - amount of the fee
+    ///@return expires - unix timestamp when the discount expires
+    function getFee(string memory _exchange, string memory _type) external view returns (uint,uint) {
+        sFee memory rv = mFee[_exchange][_type];
+        if (rv.replacement_amount == 0 && rv.current_amount == 0) {
+            rv = mFee['DEFAULT'][_type];
+        }
+        uint amount =  (rv.start != 0 && rv.start <= block.timestamp) ? rv.replacement_amount : rv.current_amount;
+        return (amount,0); 
+    }
+
+
     ///@notice get a constant setting and check for new value baed on timestamp
     ///@param _exchange Exchange name
     ///@param _type Name of constant
     ///@return value of constant
 
-    function getConst(string memory _exchange, string memory _type) public view returns (uint) {
+    function getConst(string memory _exchange, string memory _type) external view returns (uint) {
         sFee memory rv = mFee[_exchange][_type];
         if (rv.replacement_amount == 0 && rv.current_amount == 0) {
             rv = mFee['DEFAULT'][_type];
         }
         return (rv.start != 0 && rv.start <= block.timestamp) ? rv.replacement_amount : rv.current_amount;
-    }
-
-
-    ///@notice Accept an array of users and discounts from teh admin only
-    ///@param _discount struct array of users and discounts    
-    function setDiscount(aDiscount[] calldata  _discount) external onlyOwner{ 
-        for (uint i = 0; i < _discount.length; i++) {
-            setDiscount(_discount[i]._user, _discount[i]._discount, _discount[i]._expires);
-        }
-        emit sdDiscountsSet(_discount.length);
     }
 
     ///@notice Accept a user and discount from the admin only
@@ -114,8 +122,26 @@ contract combine_beacon is Ownable {
             _expires = block.timestamp + _expires;
         }
         mDiscounts[_user].expires = _expires;
-
+        if (mDataUint["LASTDISCOUNT"] != block.timestamp) mDataUint['LASTDISCOUNT'] = block.timestamp;
         emit sdDiscountSet(_user,_amount,_expires);
+    }
+
+    ///@notice Accept an array of users and discounts from teh admin only
+    ///@param _discount struct array of users and discounts    
+    function setDiscountArray(aDiscount[] calldata  _discount) public onlyOwner{ 
+        for (uint i = 0; i < _discount.length; i++) {
+            setDiscount(_discount[i]._user, _discount[i]._discount, _discount[i]._expires);
+        }
+        emit sdDiscountsSet(_discount.length);
+    }
+
+    ///@notice get discount amount for a user
+    ///@param _user User address
+    ///@return discount amount
+    ///@return Unix timestamp when the discount expires
+    function getDiscount(address _user) external view returns (uint,uint) {
+        sDiscount memory disc = mDiscounts[_user];
+        return (disc.discount_amount, disc.expires);
     }
 
     ///@notice Sets a fee for an exchange and function
@@ -123,7 +149,7 @@ contract combine_beacon is Ownable {
     ///@param _type Function name
     ///@param _replacement_amount Amount of the fee
     ///@param _start Unix timestamp when the fee starts
-    function setFee(string memory _exchange, string memory _type, uint _replacement_amount, uint256 _start) public onlyOwner {
+    function setFee(string memory _exchange, string memory _type, uint _replacement_amount, uint256 _start) external onlyOwner {
         sFee memory rv = mFee[_exchange][_type];
         
         if (_start < 1209600) {
@@ -146,7 +172,7 @@ contract combine_beacon is Ownable {
     ///@notice Get logic contract for an exchange
     ///@param _exchange Exchange name
     ///@return address of the logic contract
-    function getExchange(string memory _exchange) public view returns(address) {
+    function getExchange(string memory _exchange) external view returns(address) {
         sExchange memory rv = mExchanges[_exchange];
 
         if (rv.start != 0 && rv.start < block.timestamp) {
@@ -188,7 +214,7 @@ contract combine_beacon is Ownable {
     ///@param _baseToken FUTURE CODE: Address of the token used as base for all calculations. Currently it is only BNB
     ///@param _contractType_solo Name of Logic Contract to be called  from "getExchange" for solo farming
     ///@param _contractType_pooled Name of Logic Contract to be called  from "getExchange" for pooled farming
-    function setExchangeInfo(string memory _name, address _chefContract, address _routerContract, address _rewardToken, string memory _pendingCall,address _intermediateToken, address _baseToken, string memory _contractType_solo, string memory _contractType_pooled) public onlyOwner {
+    function setExchangeInfo(string memory _name, address _chefContract, address _routerContract, bool _psV2, address _rewardToken, string memory _pendingCall,address _intermediateToken, address _baseToken, string memory _contractType_solo, string memory _contractType_pooled) public onlyOwner {
         require(bytes(_name).length > 0, "Name cannot be empty");
         require(_chefContract != address(0), "Chef contract cannot be empty");
         require(_routerContract != address(0), "Route contract cannot be empty");
@@ -199,19 +225,20 @@ contract combine_beacon is Ownable {
 
         mExchangeInfo[_name].chefContract = _chefContract;
         mExchangeInfo[_name].routerContract = _routerContract;
+        mExchangeInfo[_name].psV2 = _psV2;
         mExchangeInfo[_name].rewardToken = _rewardToken;
         mExchangeInfo[_name].pendingCall = _pendingCall;
         mExchangeInfo[_name].intermediateToken = _intermediateToken;
         mExchangeInfo[_name].baseToken = _baseToken;
         mExchangeInfo[_name].contractType_solo = _contractType_solo;
         mExchangeInfo[_name].contractType_pooled = _contractType_pooled;
-        emit sdEexchangeInfoSet(_name, _chefContract, _routerContract, _rewardToken, _pendingCall, _intermediateToken, _baseToken, _contractType_solo, _contractType_pooled);        
+        emit sdEexchangeInfoSet(_name, _chefContract, _routerContract, _psV2, _rewardToken, _pendingCall, _intermediateToken, _baseToken, _contractType_solo, _contractType_pooled);        
     }
     
     ///@notice Get information for exchange
     ///@param _name Exchange name
     ///@return Structure containing exchange information creaded by setExchangeInfo
-    function getExchangeInfo(string memory _name) public view returns (sExchangeInfo memory) {
+    function getExchangeInfo(string memory _name) external view returns (sExchangeInfo memory) {
         return mExchangeInfo[_name];
     }
 
@@ -238,8 +265,24 @@ contract combine_beacon is Ownable {
     ///@notice Get address of lookup key (ie. FEECOLLECTOR, ADMINUSER, etc)
     ///@param _key Key name
     ///@return Address of specified key
-    function getAddress(string memory _key) public view returns(address) {
+    function getAddress(string memory _key) external view returns(address) {
         return mData[_key];
+    }
+
+    ///@notice Get a uint of lookup key. Mostly used for LAST DEPOSITS
+    ///@param _key Key name
+    ///@return uint of specified key
+    function getDataUint(string memory _key) external view returns (uint) {
+        return mDataUint[_key];
+    }
+
+    ///@notice Set a uint of lookup key. Mostly used for LAST DEPOSITS
+    ///@param _key Key name
+    ///@param _value uint of specified key    
+    function setDataUint(string memory _key, uint _value) external onlyOwner {
+        require(bytes(_key).length > 0, "Key cannot be empty");
+        mDataUint[_key] = _value;
+        emit sdDataUintSet(_key, _value);
     }
 }
 
