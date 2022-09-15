@@ -1,4 +1,4 @@
-/**
+/*
  * Use this file to configure your truffle project. It's seeded with some
  * common settings for different networks and features like migrations,
  * compilation and testing. Uncomment the ones you need or modify
@@ -29,6 +29,13 @@ const deploy_config = require('dotenv').config().parsed;
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 
 module.exports = {
+  plugins: [
+    'truffle-plugin-verify',
+    'truffle-plugin-stdjsonin'
+  ],
+  api_keys: {
+    bscscan: deploy_config.BSCSCANAPIKEY
+  },
   /**
    * Networks define how you connect to your ethereum client and let you set the
    * defaults web3 uses to send transactions. If you don't specify one truffle
@@ -46,19 +53,21 @@ module.exports = {
       port: 8545,            // Standard Ethereum port (default: none)
       network_id: "*",       // Any network (default: none)
       gas: 67219750,
-      gasPrice: 100,
+      gasPrice: 5000000000,
     },
     live: {
       provider: () => new HDWalletProvider(deploy_config.privateKey, deploy_config.deployNode),
       network_id: 56,
       // confirmations: 2,
       timeoutBlocks: 200,
-      skipDryRun: true
+      skipDryRun: true,
+      pollingInterval: 1800000, // avoids too many requests
+      disableConfirmationListener: true, // avoids too many requests
     },
     testnet: {
       provider: () => new HDWalletProvider(deploy_config.privateKeyDev, deploy_config.testnetNode),
-      network_id: 97,
-      confirmations: 2,
+      network_id: 56,
+      // confirmations: 2,
       timeoutBlocks: 200,
       skipDryRun: true,
       websocket: false,
@@ -117,7 +126,7 @@ module.exports = {
   // Configure your compilers
   compilers: {
     solc: {
-      version: "0.8.7",    // Fetch exact version from solc-bin (default: truffle's version)
+      version: "0.8.13",    // Fetch exact version from solc-bin (default: truffle's version)
       // docker: true,        // Use "0.5.1" you've installed locally with docker (default: false)
       settings: {          // See the solidity docs for advice about optimization and evmVersion
        optimizer: {

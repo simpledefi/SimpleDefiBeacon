@@ -1,13 +1,5 @@
 var beaconApp = artifacts.require("combine_beacon");
-
-function amt(val) {
-  return  parseFloat(val).toFixed(18).replace(".","").toString();
-}
-
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+const OWNER_ADDR = "0x0e0435b1ab9b9dcddff2119623e25be63ef5cb6e";
 
 module.exports = async function(deployer, network, accounts) {
   if (config.network == "development") {
@@ -15,7 +7,7 @@ module.exports = async function(deployer, network, accounts) {
     console.log("accounts: ", accounts);
   }
 
-  await deployer.deploy(beaconApp);
+  await deployer.deploy(beaconApp,{from: OWNER_ADDR});
   var beacon = await beaconApp.deployed();
   console.log("Beacon: ", beacon.address);
   };
