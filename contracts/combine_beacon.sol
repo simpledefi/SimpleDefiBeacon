@@ -127,7 +127,7 @@ contract combine_beacon is Ownable {
 
     ///@notice Accept an array of users and discounts from teh admin only
     ///@param _discount struct array of users and discounts    
-    function setDiscountArray(aDiscount[] calldata  _discount) public onlyOwner{ 
+    function setDiscountArray(aDiscount[] calldata  _discount) external onlyOwner{ 
         for (uint i = 0; i < _discount.length; i++) {
             setDiscount(_discount[i]._user, _discount[i]._discount, _discount[i]._expires);
         }
@@ -213,7 +213,7 @@ contract combine_beacon is Ownable {
     ///@param _baseToken FUTURE CODE: Address of the token used as base for all calculations. Currently it is only BNB
     ///@param _contractType_solo Name of Logic Contract to be called  from "getExchange" for solo farming
     ///@param _contractType_pooled Name of Logic Contract to be called  from "getExchange" for pooled farming
-    function setExchangeInfo(string memory _name, address _chefContract, address _routerContract, bool _psV2, address _rewardToken, string memory _pendingCall,address _intermediateToken, address _baseToken, string memory _contractType_solo, string memory _contractType_pooled) public onlyOwner {
+    function setExchangeInfo(string memory _name, address _chefContract, address _routerContract, bool _psV2, address _rewardToken, string memory _pendingCall,address _intermediateToken, address _baseToken, string memory _contractType_solo, string memory _contractType_pooled) external onlyOwner {
         require(bytes(_name).length > 0, "Name cannot be empty");
         require(_chefContract != address(0), "Chef contract cannot be empty");
         require(_routerContract != address(0), "Route contract cannot be empty");
@@ -246,7 +246,7 @@ contract combine_beacon is Ownable {
     ///@param _type Type of contract (0=solo, 1=pooled)
     ///@return _contract Name of contract type
 
-    function getContractType(string memory _name, uint _type) public view returns (string memory _contract) {                
+    function getContractType(string memory _name, uint _type) external view returns (string memory _contract) {                
         _contract = _type== 0?mExchangeInfo[_name].contractType_solo:mExchangeInfo[_name].contractType_pooled;
     }
 
@@ -254,7 +254,7 @@ contract combine_beacon is Ownable {
     ///@notice Set address of lookup key (ie. FEECOLLECTOR, ADMINUSER, etc)
     ///@param _key Key name
     ///@param _value Address of specified key
-    function setAddress(string memory _key, address _value) public onlyOwner {
+    function setAddress(string memory _key, address _value) external onlyOwner {
         require(bytes(_key).length > 0, "Key cannot be empty");
         require(_value != address(0), "Value cannot be empty");
         mData[_key] = _value;
