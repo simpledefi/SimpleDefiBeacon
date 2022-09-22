@@ -1,6 +1,5 @@
 //SPDX-License-Identifier: MIT-open-group
 pragma solidity ^0.8.7;
-pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract combine_beacon is Ownable {
@@ -77,7 +76,7 @@ contract combine_beacon is Ownable {
             expires = 0;
         }
         else {
-            amount = amount - (amount *(disc.discount_amount/100) / (10**18)); 
+            amount = amount - ((amount * disc.discount_amount) / 1e20); 
             expires = disc.expires;
         }
 
